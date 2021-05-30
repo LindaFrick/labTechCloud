@@ -81,10 +81,10 @@ tedx_dataset_agg = tedx_dataset.join(tags_dataset_agg, tedx_dataset.idx == tags_
     .drop("idx") \
 
 watch_next_dataset = watch_next_dataset.withColumnRenamed("url","watch_next_url")
+watch_next_dataset = tags_dataset.groupBy(col("idx").alias("idx_ref")).agg(collect_list(("watch_next_url").alias("watch_next_urls"),("watch_next_id").alias("watch_next_ids")))
 tedx_all_dataset= watch_next_dataset.join(tedx_dataset_agg, watch_next_dataset.idx== tedx_dataset_agg._id, "left") \
-    .drop("idx") \
-    .select(col("watch_next_idx").alias("watch_next_id"), col("*")) \
-    .drop(col("watch_next_idx")) \
+    .drop("idx_ref") \
+    .select(col("*")) \
 
 tedx_complete_dataset = tedx_all_dataset.join(ted_yt_dataset, tedx_all_dataset._id== ted_yt_dataset.idx, "inner") \
     .drop("idx") \
