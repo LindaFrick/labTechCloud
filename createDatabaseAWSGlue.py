@@ -16,7 +16,7 @@ from awsglue.job import Job
 
 
 ##### FROM FILES
-tedx_dataset_path = "s3://data-techcloud/tedx_dataset.csv"
+tedx_dataset_path = "s3://data-techcloud/clean_tedx_dataset.csv/clean_tedx_dataset.csv"
 
 ###### READ PARAMETERS
 args = getResolvedOptions(sys.argv, ['JOB_NAME'])
@@ -61,6 +61,8 @@ tags_dataset = spark.read.option("header","true").csv(tags_dataset_path)
 watch_next_dataset_path= "s3://data-techcloud/watch_next_dataset.csv"
 watch_next_dataset= spark.read \
     .option("header","true") \
+    .option("quote", "\"") \
+    .option("escape", "\"") \
     .csv(watch_next_dataset_path)
     
 ## READ YT CSV
@@ -81,9 +83,10 @@ tedx_dataset_agg = tedx_dataset.join(tags_dataset_agg, tedx_dataset.idx == tags_
     .drop("idx") \
 
 watch_next_dataset = watch_next_dataset.withColumnRenamed("url","watch_next_url")
-watch_next_dataset = tags_dataset.groupBy(col("idx").alias("idx_ref")).agg(collect_list(("watch_next_url").alias("watch_next_urls"),("watch_next_id").alias("watch_next_ids")))
-tedx_all_dataset= watch_next_dataset.join(tedx_dataset_agg, watch_next_dataset.idx== tedx_dataset_agg._id, "left") \
-    .drop("idx_ref") \
+watch_next_dataset = watch_next_dataset.drop_duplicates()
+watch_next_dataset = watch_next_dataset.groupBy(col("idx")).agg(collect_list("watch_next_idx").alias("watch_next_ids"),collect_list("watch_next_url").alias("watch_next_urls"))
+tedx_all_dataset= watch_next_dataset.join(tedx_dataset_agg, watch_next_dataset.idx== tedx_dataset_agg._id, "inner") \
+    .drop("idx") \
     .select(col("*")) \
 
 tedx_complete_dataset = tedx_all_dataset.join(ted_yt_dataset, tedx_all_dataset._id== ted_yt_dataset.idx, "inner") \
@@ -93,14 +96,14 @@ tedx_complete_dataset = tedx_all_dataset.join(ted_yt_dataset, tedx_all_dataset._
 tedx_complete_dataset.printSchema()
 
 
-mongo_uri = "mongodb://cluster0-shard-00-00.lg7o7.mongodb.net:27017,cluster0-shard-00-01.lg7o7.mongodb.net:27017,cluster0-shard-00-02.lg7o7.mongodb.net:27017"
-
+#mongo_uri = "mongodb://cluster0-shard-00-00.lg7o7.mongodb.net:27017,cluster0-shard-00-01.lg7o7.mongodb.net:27017,cluster0-shard-00-02.lg7o7.mongodb.net:27017"
+mongo_uri = "mongodb://clustertechcloud-shard-00-00.nv77c.mongodb.net:27017,clustertechcloud-shard-00-01.nv77c.mongodb.net:27017,clustertechcloud-shard-00-02.nv77c.mongodb.net:27017"
 write_mongo_options = {
     "uri": mongo_uri,
     "database": "unibg_tedx_2021",
     "collection": "tedx_data",
-    "username": "TEDTravel",
-    "password": "ProjectTCM",
+    "username": "admin",
+    "password": "*WmKEfXy.VkUQ35",
     "ssl": "true",
     "ssl.domain_match": "false"}
 from awsglue.dynamicframe import DynamicFrame
