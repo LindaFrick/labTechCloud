@@ -26,12 +26,25 @@ module.exports.get_by_talk = (event, context, callback) => {
         var url_watch_next
         var titles = []
         var promises = []
-        var promise1 = (talk.find({_id: body._id})
+        talk.find({_id: body._id})
             .then(talks => {
                 watch_next_ids = talks[0].watch_next_ids;
                 url_watch_next = talks[0].watch_next_urls;
+                watch_next_ids.forEach(id => {
+                    promises.push(talk.find({_id:id})
+                        .then(talk2=> {
+                            if(talk2 && talk2[0] && talk2[0].title){
+                                titles.push(talk2[0].title)
+                            }
+                        })
+                    )}
+                )
                 
-                
+                Promise.all(promises).then(val => {
+                callback(null, {
+                    statusCode: 200,
+                    body: '{"ids":' + JSON.stringify(watch_next_ids) + ',\n"urls":' + JSON.stringify(url_watch_next) + ',\n"titles":'+JSON.stringify(titles)+'}'
+                })})
             })
             .catch(err =>
                 callback(null, {
@@ -39,17 +52,6 @@ module.exports.get_by_talk = (event, context, callback) => {
                     headers: { 'Content-Type': 'text/plain' },
                     body: 'Could not fetch the talks.'
                 })
-            ))
-            
-            Promise.all([promise1]).then(value => {watch_next_ids.forEach(id => {console.log("promise pushato");promises.push(talk.find({_id:id}).then(talk2=> {if(talk2 && talk2[0] && talk2[0].title){titles.push(talk2[0].title)};console.log(talk2)}))})
-            console.log("dopo")
-            Promise.all(promises).then(val => {
-                callback(null, {
-                    statusCode: 200,
-                    body: '{"ids":' + JSON.stringify(watch_next_ids) + ',\n"urls":' + JSON.stringify(url_watch_next) + ',\n"titles":'+JSON.stringify(titles)+'}'
-                })})})
-            
-            
-        
+            )
     });
 };
